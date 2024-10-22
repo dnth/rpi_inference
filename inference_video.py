@@ -1,7 +1,13 @@
+import argparse
 import time
 
 import cv2
 from ultralytics import YOLO
+
+# Add argument parser
+parser = argparse.ArgumentParser(description="Run YOLOv8 inference on webcam feed")
+parser.add_argument("--imgsz", type=int, default=320, help="Image size for inference")
+args = parser.parse_args()
 
 # Load the YOLO model
 model = YOLO("yolov8n.pt")
@@ -26,7 +32,7 @@ while True:
         break
 
     # Run inference on the frame
-    results = model(frame, imgsz=320)
+    results = model(frame, imgsz=args.imgsz)
 
     # Plot the results on the frame
     annotated_frame = results[0].plot()
