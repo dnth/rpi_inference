@@ -7,10 +7,13 @@ from ultralytics import YOLO
 # Add argument parser
 parser = argparse.ArgumentParser(description="Run YOLOv8 inference on webcam feed")
 parser.add_argument("--imgsz", type=int, default=320, help="Image size for inference")
+parser.add_argument(
+    "--model", type=str, default="yolov8n.pt", help="Path to YOLO model"
+)
 args = parser.parse_args()
 
 # Load the YOLO model
-model = YOLO("yolov8n.pt")
+model = YOLO(args.model)
 
 # Open the webcam
 cap = cv2.VideoCapture(0)
