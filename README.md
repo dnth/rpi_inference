@@ -1,6 +1,11 @@
 # rpi_inference
 Computer vision inference on Raspberry Pi.
 
+## Install
+
+```bash
+pip install ultralytics
+```
 
 ## Usage
 
