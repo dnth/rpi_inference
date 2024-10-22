@@ -26,7 +26,7 @@ while True:
         break
 
     # Run inference on the frame
-    results = model(frame)
+    results = model(frame, imgsz=320)
 
     # Plot the results on the frame
     annotated_frame = results[0].plot()
