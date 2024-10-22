@@ -1,6 +1,6 @@
 description: Ultralytics YOLOv8n model trained on coco.yaml
 author: Ultralytics
-date: '2024-10-23T01:51:07.374176'
+date: '2024-10-23T02:09:05.987399'
 version: 8.3.20
 license: AGPL-3.0 License (https://ultralytics.com/license)
 docs: https://docs.ultralytics.com
@@ -8,8 +8,8 @@ stride: 32
 task: detect
 batch: 1
 imgsz:
-- 640
-- 640
+- 320
+- 320
 names:
   0: person
   1: bicycle
