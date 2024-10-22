@@ -13,9 +13,6 @@ parser.add_argument(
 parser.add_argument(
     "--source", type=int, default=0, help="Webcam source (default is 0)"
 )
-parser.add_argument(
-    "--output", type=str, default=None, help="Path to save output video (optional)"
-)
 args = parser.parse_args()
 
 # Load the YOLO model
@@ -23,15 +20,6 @@ model = YOLO(args.model)
 
 # Open the webcam
 cap = cv2.VideoCapture(args.source)
-
-# Initialize video writer
-out = None
-if args.output:
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    out = cv2.VideoWriter(args.output, fourcc, fps, (width, height))
 
 
 def draw_fps(frame, fps):
@@ -61,10 +49,6 @@ while True:
     prev_time = current_time
     draw_fps(annotated_frame, fps)
 
-    # Write the frame to the output video if specified
-    if out:
-        out.write(annotated_frame)
-
     # Display the annotated frame
     cv2.imshow("YOLOv8 Inference", annotated_frame)
 
@@ -74,6 +58,4 @@ while True:
 
 # Release the webcam and close all windows
 cap.release()
-if out:
-    out.release()
 cv2.destroyAllWindows()
