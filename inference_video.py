@@ -10,13 +10,16 @@ parser.add_argument("--imgsz", type=int, default=320, help="Image size for infer
 parser.add_argument(
     "--model", type=str, default="yolov8n.pt", help="Path to YOLO model"
 )
+parser.add_argument(
+    "--source", type=int, default=0, help="Webcam source (default is 0)"
+)
 args = parser.parse_args()
 
 # Load the YOLO model
 model = YOLO(args.model)
 
 # Open the webcam
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(args.source)
 
 
 def draw_fps(frame, fps):
