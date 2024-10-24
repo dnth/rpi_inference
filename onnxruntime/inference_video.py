@@ -7,17 +7,14 @@ import numpy as np
 import onnxruntime
 
 
-# sigmoid函数
 def sigmoid(x):
     return 1.0 / (1 + np.exp(-x))
 
 
-# tanh函数
 def tanh(x):
     return 2.0 / (1 + np.exp(-2 * x)) - 1
 
 
-# 数据预处理
 def preprocess(src_img, size):
     output = cv2.resize(src_img, (size[0], size[1]), interpolation=cv2.INTER_AREA)
     output = output.transpose(2, 0, 1)
@@ -26,41 +23,41 @@ def preprocess(src_img, size):
     return output.astype("float32")
 
 
-# nms算法
 def nms(dets, thresh=0.45):
-    x1 = dets[:, 0]
-    y1 = dets[:, 1]
-    x2 = dets[:, 2]
-    y2 = dets[:, 3]
+    # Convert to numpy array if not already
+    dets = np.array(dets)
+
+    # Sort by scores
     scores = dets[:, 4]
-    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
     order = scores.argsort()[::-1]
+    dets = dets[order]
+
+    x1, y1, x2, y2, scores = dets[:, 0], dets[:, 1], dets[:, 2], dets[:, 3], dets[:, 4]
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+
     keep = []
+    while dets.shape[0] > 0:
+        keep.append(dets[0])
+        if dets.shape[0] == 1:
+            break
 
-    while order.size > 0:
-        i = order[0]
-        keep.append(i)
-
-        xx1 = np.maximum(x1[i], x1[order[1:]])
-        yy1 = np.maximum(y1[i], y1[order[1:]])
-        xx2 = np.minimum(x2[i], x2[order[1:]])
-        yy2 = np.minimum(y2[i], y2[order[1:]])
+        # Compute IoU
+        xx1 = np.maximum(dets[0, 0], dets[1:, 0])
+        yy1 = np.maximum(dets[0, 1], dets[1:, 1])
+        xx2 = np.minimum(dets[0, 2], dets[1:, 2])
+        yy2 = np.minimum(dets[0, 3], dets[1:, 3])
 
         w = np.maximum(0.0, xx2 - xx1 + 1)
         h = np.maximum(0.0, yy2 - yy1 + 1)
         inter = w * h
 
-        ovr = inter / (areas[i] + areas[order[1:]] - inter)
+        ovr = inter / (areas[0] + areas[1:] - inter)
 
         inds = np.where(ovr <= thresh)[0]
+        dets = dets[inds + 1]
+        areas = areas[inds + 1]
 
-        order = order[inds + 1]
-
-    output = []
-    for i in keep:
-        output.append(dets[i].tolist())
-
-    return output
+    return keep
 
 
 def detection(session, img, input_width, input_height, thresh):
