@@ -99,7 +99,7 @@ cap = cv2.VideoCapture(args.camera)
 # Initialize the YOLOv8 model
 model = get_model(
     "yolov8s",
-    target_size=640,
+    target_size=320,
     prob_threshold=0.5,
     nms_threshold=0.45,
     num_threads=4,
