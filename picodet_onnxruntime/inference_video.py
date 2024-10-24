@@ -197,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--modelpath",
         type=str,
-        default="onnx_files/picodet_s_320_lcnet_postprocessed.onnx",
+        default="onnx_files/picodet_xs_320_lcnet_postprocessed.onnx",
         help="onnx filepath",
     )
     parser.add_argument(
