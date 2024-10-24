@@ -1,6 +1,4 @@
 import math
-import multiprocessing
-import queue
 import time
 
 import cv2
@@ -133,16 +131,6 @@ def detect_objects(img, net, class_names, thresh=0.65):
     return nms_boxes
 
 
-def process_frame(frame_queue, result_queue, net, class_names):
-    while True:
-        try:
-            frame, frame_number = frame_queue.get(timeout=1)
-            results = detect_objects(frame, net, class_names)
-            result_queue.put((frame, results, frame_number))
-        except queue.Empty:
-            break
-
-
 def main():
     class_names = [
         "person",
@@ -239,23 +227,6 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-    # Create queues for multiprocessing
-    frame_queue = multiprocessing.Queue()
-    result_queue = multiprocessing.Queue()
-
-    # Determine the number of cores to use (leave one core free for the main process)
-    num_cores = multiprocessing.cpu_count() - 1
-
-    # Create and start worker processes
-    processes = []
-    for _ in range(num_cores):
-        p = multiprocessing.Process(
-            target=process_frame, args=(frame_queue, result_queue, net, class_names)
-        )
-        p.start()
-        processes.append(p)
-
-    frame_number = 0
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -263,73 +234,54 @@ def main():
 
         start_time = time.time()
 
-        # Add frame to the queue for processing
-        frame_queue.put((frame.copy(), frame_number))
+        # Detect objects
+        results = detect_objects(frame, net, class_names)
 
-        # Process results
-        try:
-            processed_frame, results, processed_frame_number = result_queue.get(
-                timeout=1 / 30
-            )  # Adjust timeout as needed
-
-            # Draw results on the processed frame
-            for box in results:
-                cv2.rectangle(
-                    processed_frame, (box.x1, box.y1), (box.x2, box.y2), (0, 0, 255), 2
-                )
-                cv2.putText(
-                    processed_frame,
-                    f"{class_names[box.category]} {box.score:.2f}",
-                    (box.x1, box.y1 - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),
-                    2,
-                )
-
-            end_time = time.time()
-            latency = (end_time - start_time) * 1000
-            fps = 1 / (end_time - start_time)
-
-            # Add FPS and latency text
+        # Draw results
+        for box in results:
+            cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), (0, 0, 255), 2)
             cv2.putText(
-                processed_frame,
-                f"FPS: {fps:.2f}",
-                (10, 30),
+                frame,
+                f"{class_names[box.category]} {box.score:.2f}",
+                (box.x1, box.y1 - 5),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 0),
-                2,
-            )
-            cv2.putText(
-                processed_frame,
-                f"Latency: {latency:.2f} ms",
-                (10, 70),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                0.5,
                 (0, 255, 0),
                 2,
             )
 
-            # Display the frame
-            cv2.imshow("FastestDet Webcam", processed_frame)
+        end_time = time.time()
+        latency = (end_time - start_time) * 1000  # Convert to milliseconds
+        fps = 1 / (end_time - start_time)
 
-        except queue.Empty:
-            pass
+        # Add FPS text (top left)
+        cv2.putText(
+            frame,
+            f"FPS: {fps:.2f}",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+        )
 
-        frame_number += 1
+        # Add latency text (under FPS)
+        cv2.putText(
+            frame,
+            f"Latency: {latency:.2f} ms",
+            (10, 70),  # Moved down by 40 pixels
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+        )
+
+        # Display the frame
+        cv2.imshow("FastestDet Webcam", frame)
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-
-    # Signal worker processes to stop
-    for _ in range(num_cores):
-        frame_queue.put(None)
-
-    # Wait for worker processes to finish
-    for p in processes:
-        p.join()
 
     # Release the webcam and close windows
     cap.release()
