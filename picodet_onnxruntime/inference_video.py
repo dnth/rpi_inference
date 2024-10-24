@@ -22,7 +22,10 @@ class PicoDet:
         self.std = np.array([57.375, 57.12, 58.395], dtype=np.float32).reshape(1, 1, 3)
         so = ort.SessionOptions()
         so.log_severity_level = 3
-        self.net = ort.InferenceSession(model_pb_path, so)
+        so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
+        self.net = ort.InferenceSession(
+            model_pb_path, so, providers=["CPUExecutionProvider"]
+        )
         self.input_shape = (
             self.net.get_inputs()[0].shape[2],
             self.net.get_inputs()[0].shape[3],
@@ -74,17 +77,14 @@ class PicoDet:
         return img, scale_factor
 
     def get_color_map_list(self, num_classes):
-        color_map = num_classes * [0, 0, 0]
-        for i in range(0, num_classes):
-            j = 0
-            lab = i
-            while lab:
-                color_map[i * 3] |= ((lab >> 0) & 1) << (7 - j)
-                color_map[i * 3 + 1] |= ((lab >> 1) & 1) << (7 - j)
-                color_map[i * 3 + 2] |= ((lab >> 2) & 1) << (7 - j)
-                j += 1
-                lab >>= 3
-        color_map = [color_map[i : i + 3] for i in range(0, len(color_map), 3)]
+        color_map = []
+        for i in range(num_classes):
+            color = (
+                (i * 123) % 256,  # Red
+                (i * 231) % 256,  # Green
+                (i * 321) % 256,  # Blue
+            )
+            color_map.append(color)
         return color_map
 
     def detect(self, srcimg):
