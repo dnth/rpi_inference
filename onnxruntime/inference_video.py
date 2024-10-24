@@ -106,6 +106,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--camera", type=int, default=0, help="Camera index (default: 0)"
     )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.65,
+        help="Confidence threshold for detection (default: 0.65)",
+    )
     args = parser.parse_args()
 
     # Load the model with optimizations
@@ -136,7 +142,7 @@ if __name__ == "__main__":
 
         # Perform object detection
         start = time.perf_counter()
-        bboxes = detection(session, frame, input_width, input_height, 0.65)
+        bboxes = detection(session, frame, input_width, input_height, args.threshold)
         end = time.perf_counter()
         inference_time = (end - start) * 1000.0
 
