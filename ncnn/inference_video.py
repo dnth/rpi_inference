@@ -1,4 +1,6 @@
 import math
+import queue
+import threading
 import time
 
 import cv2
@@ -132,6 +134,15 @@ def detect_objects(img, net, class_names, thresh=0.65):
     return nms_boxes
 
 
+def capture_frames(cap, frame_queue, stop_event):
+    while not stop_event.is_set():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if frame_queue.qsize() < 10:  # Limit queue size
+            frame_queue.put(frame)
+
+
 def main():
     class_names = [
         "person",
@@ -227,10 +238,18 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
+    frame_queue = queue.Queue()
+    stop_event = threading.Event()
+    capture_thread = threading.Thread(
+        target=capture_frames, args=(cap, frame_queue, stop_event)
+    )
+    capture_thread.start()
+
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        if frame_queue.empty():
+            continue
+
+        frame = frame_queue.get()
 
         start_time = time.time()
 
@@ -282,6 +301,9 @@ def main():
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
+
+    stop_event.set()
+    capture_thread.join()
 
     # Release the webcam and close windows
     cap.release()
