@@ -129,9 +129,14 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # Load the model
+    # Load the model with optimizations
     input_width, input_height = 352, 352
-    session = onnxruntime.InferenceSession("FastestDet.onnx")
+    sess_options = onnxruntime.SessionOptions()
+    sess_options.graph_optimization_level = (
+        onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+    )
+    sess_options.intra_op_num_threads = 4  # Adjust based on your Pi's CPU cores
+    session = onnxruntime.InferenceSession("FastestDet.onnx", sess_options=sess_options)
 
     # Load label names
     names = []
