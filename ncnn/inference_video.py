@@ -63,7 +63,7 @@ def detect_objects(img, net, class_names, thresh=0.65):
     input_width, input_height = 352, 352
     mat_in = ncnn.Mat.from_pixels_resize(
         img,
-        ncnn.Mat.PixelType.PIXEL_BGR2RGB,  # Change to RGB
+        ncnn.Mat.PixelType.PIXEL_BGR,
         img_width,
         img_height,
         input_width,
@@ -77,46 +77,57 @@ def detect_objects(img, net, class_names, thresh=0.65):
 
     # Create extractor
     ex = net.create_extractor()
+
+    # Set input tensor
     ex.input("input.1", mat_in)
+
+    # Get output tensor
     ret, output = ex.extract("758")
 
     # Process detections
     target_boxes = []
     class_num = len(class_names)
-    output_data = output.numpy().reshape(
-        -1, output.w * output.h
-    )  # Reshape for faster access
 
     for h in range(output.h):
         for w in range(output.w):
             obj_score_index = h * output.w + w
-            obj_score = output_data[0, obj_score_index]
+            obj_score = output[obj_score_index]
 
-            if obj_score > thresh:
-                cls_scores = output_data[5 : 5 + class_num, obj_score_index]
-                max_score = np.max(cls_scores)
-                category = np.argmax(cls_scores)
+            max_score = 0.0
+            category = -1
+            for i in range(class_num):
+                cls_score_index = ((5 + i) * output.h * output.w) + (h * output.w) + w
+                cls_score = output[cls_score_index]
+                if cls_score > max_score:
+                    max_score = cls_score
+                    category = i
 
-                score = pow(max_score, 0.4) * pow(obj_score, 0.6)
+            score = pow(max_score, 0.4) * pow(obj_score, 0.6)
 
-                if score > thresh:
-                    x_offset = tanh(output_data[1, obj_score_index])
-                    y_offset = tanh(output_data[2, obj_score_index])
-                    box_width = sigmoid(output_data[3, obj_score_index])
-                    box_height = sigmoid(output_data[4, obj_score_index])
+            if score > thresh:
+                x_offset_index = (1 * output.h * output.w) + (h * output.w) + w
+                y_offset_index = (2 * output.h * output.w) + (h * output.w) + w
+                box_width_index = (3 * output.h * output.w) + (h * output.w) + w
+                box_height_index = (4 * output.h * output.w) + (h * output.w) + w
 
-                    cx = (w + x_offset) / output.w
-                    cy = (h + y_offset) / output.h
+                x_offset = tanh(output[x_offset_index])
+                y_offset = tanh(output[y_offset_index])
+                box_width = sigmoid(output[box_width_index])
+                box_height = sigmoid(output[box_height_index])
 
-                    x1 = int((cx - box_width * 0.5) * img_width)
-                    y1 = int((cy - box_height * 0.5) * img_height)
-                    x2 = int((cx + box_width * 0.5) * img_width)
-                    y2 = int((cy + box_height * 0.5) * img_height)
+                cx = (w + x_offset) / output.w
+                cy = (h + y_offset) / output.h
 
-                    target_boxes.append(TargetBox(x1, y1, x2, y2, category, score))
+                x1 = int((cx - box_width * 0.5) * img_width)
+                y1 = int((cy - box_height * 0.5) * img_height)
+                x2 = int((cx + box_width * 0.5) * img_width)
+                y2 = int((cy + box_height * 0.5) * img_height)
+
+                target_boxes.append(TargetBox(x1, y1, x2, y2, category, score))
 
     # Apply NMS
     nms_boxes = nms_handle(target_boxes)
+
     return nms_boxes
 
 
@@ -206,7 +217,6 @@ def main():
 
     # Load NCNN model with proper thread setting
     net = ncnn.Net()
-    net.opt.use_vulkan_compute = True  # Enable Vulkan compute if available
     net.opt.num_threads = 4  # Set the desired number of threads
     net.load_param("FastestDet.param")
     net.load_model("FastestDet.bin")
@@ -217,15 +227,8 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-    # Pre-allocate frame buffer
-    frame = np.empty((480, 640, 3), dtype=np.uint8)
-
     while True:
-        ret = cap.grab()
-        if not ret:
-            break
-
-        ret, frame = cap.retrieve(frame)
+        ret, frame = cap.read()
         if not ret:
             break
 
@@ -251,7 +254,7 @@ def main():
         latency = (end_time - start_time) * 1000  # Convert to milliseconds
         fps = 1 / (end_time - start_time)
 
-        # Add FPS and latency text
+        # Add FPS text (top left)
         cv2.putText(
             frame,
             f"FPS: {fps:.2f}",
@@ -261,10 +264,12 @@ def main():
             (0, 255, 0),
             2,
         )
+
+        # Add latency text (under FPS)
         cv2.putText(
             frame,
             f"Latency: {latency:.2f} ms",
-            (10, 70),
+            (10, 70),  # Moved down by 40 pixels
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
             (0, 255, 0),
