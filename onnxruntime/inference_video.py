@@ -98,6 +98,10 @@ def detection(session, img, input_width, input_height, thresh):
 
                 pred.append([x1, y1, x2, y2, score, cls_index])
 
+    # Add this check before calling nms
+    if not pred:
+        return []  # Return an empty list if no detections
+
     return nms(np.array(pred))
 
 
