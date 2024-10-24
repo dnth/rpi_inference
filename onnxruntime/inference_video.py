@@ -1,3 +1,4 @@
+import argparse
 import time
 
 import cv2
@@ -121,6 +122,13 @@ def detection(session, img, input_width, input_height, thresh):
 
 
 if __name__ == "__main__":
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="FastestDet Webcam Detection")
+    parser.add_argument(
+        "--camera", type=int, default=0, help="Camera index (default: 0)"
+    )
+    args = parser.parse_args()
+
     # Load the model
     input_width, input_height = 352, 352
     session = onnxruntime.InferenceSession("FastestDet.onnx")
@@ -131,11 +139,16 @@ if __name__ == "__main__":
         names = [line.strip() for line in f.readlines()]
 
     # Open webcam
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(args.camera)
+
+    if not cap.isOpened():
+        print(f"Error: Unable to open camera with index {args.camera}")
+        exit()
 
     while True:
         ret, frame = cap.read()
         if not ret:
+            print("Error: Failed to capture frame")
             break
 
         # Perform object detection
