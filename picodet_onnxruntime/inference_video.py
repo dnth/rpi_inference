@@ -147,7 +147,7 @@ def webcam_detection(args):
     )
 
     # Open webcam
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(args.camera_index)
 
     while True:
         # Read frame from webcam
@@ -159,12 +159,21 @@ def webcam_detection(args):
         # Run detection
         result_frame, inference_time = net.detect(frame)
 
-        # Display FPS
+        # Display FPS and inference latency
         fps = 1 / inference_time
         cv2.putText(
             result_frame,
             f"FPS: {fps:.2f}",
             (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+        )
+        cv2.putText(
+            result_frame,
+            f"Latency: {inference_time*1000:.2f} ms",
+            (10, 70),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
             (0, 255, 0),
@@ -199,6 +208,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--nmsThreshold", default=0.6, type=float, help="nms iou thresh"
+    )
+    parser.add_argument(
+        "--camera_index", type=int, default=0, help="camera device index"
     )
     args = parser.parse_args()
 
