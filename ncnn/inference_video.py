@@ -249,11 +249,25 @@ def main():
             )
 
         end_time = time.time()
+        latency = (end_time - start_time) * 1000  # Convert to milliseconds
         fps = 1 / (end_time - start_time)
+
+        # Add FPS text (left side)
         cv2.putText(
             frame,
             f"FPS: {fps:.2f}",
             (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+        )
+
+        # Add latency text (top right)
+        cv2.putText(
+            frame,
+            f"Latency: {latency:.2f} ms",
+            (frame.shape[1] - 230, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
             (0, 255, 0),
