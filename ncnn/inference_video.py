@@ -88,42 +88,61 @@ def detect_objects(img, net, class_names, thresh=0.65):
     target_boxes = []
     class_num = len(class_names)
 
+    # Use numpy for faster array operations
+    output_np = np.array(output)
+
+    # Vectorize operations
+    obj_scores = output_np[0 :: output.w * output.h]
+    cls_scores = output_np[
+        5 * output.w * output.h : (5 + len(class_names)) * output.w * output.h
+    ].reshape(-1, output.h, output.w)
+
+    max_scores = np.max(cls_scores, axis=0)
+    categories = np.argmax(cls_scores, axis=0)
+
+    scores = np.power(max_scores, 0.4) * np.power(obj_scores, 0.6)
+
+    mask = scores > thresh
+
     for h in range(output.h):
         for w in range(output.w):
-            obj_score_index = h * output.w + w
-            obj_score = output[obj_score_index]
+            if mask[h, w]:
+                obj_score_index = h * output.w + w
+                obj_score = output[obj_score_index]
 
-            max_score = 0.0
-            category = -1
-            for i in range(class_num):
-                cls_score_index = ((5 + i) * output.h * output.w) + (h * output.w) + w
-                cls_score = output[cls_score_index]
-                if cls_score > max_score:
-                    max_score = cls_score
-                    category = i
+                max_score = 0.0
+                category = -1
+                for i in range(class_num):
+                    cls_score_index = (
+                        ((5 + i) * output.h * output.w) + (h * output.w) + w
+                    )
+                    cls_score = output[cls_score_index]
+                    if cls_score > max_score:
+                        max_score = cls_score
+                        category = i
 
-            score = pow(max_score, 0.4) * pow(obj_score, 0.6)
+                score = pow(max_score, 0.4) * pow(obj_score, 0.6)
 
-            if score > thresh:
-                x_offset_index = (1 * output.h * output.w) + (h * output.w) + w
-                y_offset_index = (2 * output.h * output.w) + (h * output.w) + w
-                box_width_index = (3 * output.h * output.w) + (h * output.w) + w
-                box_height_index = (4 * output.h * output.w) + (h * output.w) + w
+                if score > thresh:
+                    x_offset_index = (1 * output.h * output.w) + (h * output.w) + w
+                    y_offset_index = (2 * output.h * output.w) + (h * output.w) + w
+                    box_width_index = (3 * output.h * output.w) + (h * output.w) + w
+                    box_height_index = (4 * output.h * output.w) + (h * output.w) + w
 
-                x_offset = tanh(output[x_offset_index])
-                y_offset = tanh(output[y_offset_index])
-                box_width = sigmoid(output[box_width_index])
-                box_height = sigmoid(output[box_height_index])
+                    x_offset = tanh(output[x_offset_index])
+                    y_offset = tanh(output[y_offset_index])
+                    box_width = sigmoid(output[box_width_index])
+                    box_height = sigmoid(output[box_height_index])
 
-                cx = (w + x_offset) / output.w
-                cy = (h + y_offset) / output.h
+                    cx = (w + x_offset) / output.w
+                    cy = (h + y_offset) / output.h
 
-                x1 = int((cx - box_width * 0.5) * img_width)
-                y1 = int((cy - box_height * 0.5) * img_height)
-                x2 = int((cx + box_width * 0.5) * img_width)
-                y2 = int((cy + box_height * 0.5) * img_height)
+                    x1 = int((cx - box_width * 0.5) * img_width)
+                    y1 = int((cy - box_height * 0.5) * img_height)
+                    x2 = int((cx + box_width * 0.5) * img_width)
+                    y2 = int((cy + box_height * 0.5) * img_height)
 
-                target_boxes.append(TargetBox(x1, y1, x2, y2, category, score))
+                    target_boxes.append(TargetBox(x1, y1, x2, y2, category, score))
 
     # Apply NMS
     nms_boxes = nms_handle(target_boxes)
@@ -235,10 +254,11 @@ def main():
         start_time = time.time()
 
         # Detect objects
-        results = detect_objects(frame, net, class_names)
+        num_detections = detect_objects(frame, net, class_names)
 
-        # Draw results
-        for box in results:
+        # Draw results (only for valid detections)
+        for i in range(num_detections):
+            box = results[i]
             cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), (0, 0, 255), 2)
             cv2.putText(
                 frame,
